@@ -1,0 +1,45 @@
+{% extends "base.html" %}
+
+{% block title %}Ingredients{% endblock %}
+
+{% block content %}
+<div class="container mt-4">
+    <div class="d-flex justify-content-between align-items-center mb-3">
+        <h2>Ingredients List</h2>
+        <a href="{{ url_for('view_create_ingredient_form') }}" class="btn btn-primary">Add New Ingredient</a>
+    </div>
+    <table class="table table-striped table-hover">
+        <thead>
+            <tr>
+                <th>ID</th>
+                <th>Name</th>
+                <th>Purchase Quantity</th>
+                <th>Unit</th>
+                <th>Price (IDR)</th>
+                <th>Actions</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for ingredient in ingredients %}
+            <tr>
+                <td>{{ ingredient.id }}</td>
+                <td>{{ ingredient.name }}</td>
+                <td>{{ ingredient.purchase_quantity }}</td>
+                <td>{{ ingredient.purchase_unit }}</td>
+                <td>{{ "{:,.2f}".format(ingredient.purchase_price) }}</td> {# Format price nicely #}
+                <td>
+                    <a href="{{ url_for('view_edit_ingredient_form', ingredient_id=ingredient.id) }}" class="btn btn-sm btn-warning me-1">Edit</a>
+                    <form action="{{ url_for('handle_delete_ingredient', ingredient_id=ingredient.id) }}" method="post" style="display: inline;">
+                        <button type="submit" class="btn btn-sm btn-danger" onclick="return confirm('Are you sure you want to delete this ingredient?');">Delete</button>
+                    </form>
+                </td>
+            </tr>
+            {% else %}
+            <tr>
+                <td colspan="6" class="text-center">No ingredients found.</td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+</div>
+{% endblock %}

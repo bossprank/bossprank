@@ -1,0 +1,212 @@
+{% extends "base.html" %}
+
+{% block title %}{{ recipe.name }} - Recipe Details{% endblock %}
+
+{% block content %}
+<div class="container mt-4">
+    <div class="card">
+        <div class="card-header d-flex justify-content-between align-items-center">
+            <h2>{{ recipe.name }}</h2>
+            <div>
+                <a href="{{ url_for('view_edit_recipe_form', recipe_id=recipe.id) }}" class="btn btn-warning me-2">Edit Recipe</a>
+                <a href="{{ url_for('view_list_recipes') }}" class="btn btn-secondary">Back to Recipe List</a>
+            </div>
+        </div>
+        <div class="card-body">
+            <h5 class="card-title">Description</h5>
+            <p class="card-text">{{ recipe.description if recipe.description else 'N/A' }}</p>
+
+            <h5 class="card-title mt-3">Servings per Batch</h5>
+            <p class="card-text">{{ recipe.servings_per_batch }}</p>
+
+            <h5 class="card-title mt-4">Ingredients</h5>
+            {% if recipe.ingredients %}
+            <table class="table table-sm table-bordered">
+                <thead>
+                    <tr>
+                        <th>Ingredient Name</th>
+                        <th>Quantity</th>
+                        <th>Unit</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for item in recipe.ingredients %}
+                    <tr>
+                        <td>{{ item.ingredient_name }}</td>
+                        <td>{{ item.quantity_used_in_recipe }}</td>
+                        <td>{{ item.unit_used_in_recipe }}</td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+            {% else %}
+            <p class="card-text">No ingredients listed for this recipe.</p>
+            {% endif %}
+
+            {% set instruction_fields = [
+                ("Preparation Instructions", recipe.preparation_instructions),
+                ("Mixing Instructions", recipe.mixing_instructions),
+                ("Proofing Instructions", recipe.proofing_instructions),
+                ("Baking Instructions", recipe.baking_instructions),
+                ("Resting Instructions", recipe.resting_instructions),
+                ("Packaging Instructions", recipe.packaging_instructions)
+            ] %}
+
+            {% for title, instruction in instruction_fields %}
+                {% if instruction %}
+                <h5 class="card-title mt-4">{{ title }}</h5>
+                <p class="card-text" style="white-space: pre-wrap;">{{ instruction }}</p> {# Added white-space: pre-wrap for newlines #}
+                {% endif %}
+            {% endfor %}
+        </div>
+    </div>
+
+    {# Cost Details Section - Added #}
+    <div class="card mt-4">
+        <div class="card-header">
+            <h3>Cost Details</h3>
+        </div>
+        <div class="card-body">
+            <div id="cost_error_message" class="alert alert-danger" style="display:none;"></div>
+
+            <h4>Cost Summary</h4>
+            <div class="row">
+                <div class="col-md-6">
+                    <p>Total Ingredient Cost: <strong id="total_ingredient_cost">Loading...</strong></p>
+                    <p>Total Packaging Cost: <strong id="total_packaging_cost">Loading...</strong></p>
+                </div>
+                <div class="col-md-6">
+                    <p>Servings Per Batch: <strong id="servings_per_batch_cost_summary">{{ recipe.servings_per_batch }}</strong></p>
+                    <p>Total Production Cost: <strong id="total_production_cost" class="fw-bold fs-5">Loading...</strong></p>
+                    <p>Cost Per Serving: <strong id="cost_per_serving" class="fw-bold fs-5">Loading...</strong></p>
+                </div>
+            </div>
+
+            <h4 class="mt-3">Ingredient Cost Breakdown</h4>
+            <table class="table table-sm" id="ingredient_cost_table">
+                <thead>
+                    <tr>
+                        <th>Ingredient</th>
+                        <th>Qty Used</th>
+                        <th>Unit</th>
+                        <th>Cost (IDR)</th>
+                        <th>Warning</th>
+                    </tr>
+                </thead>
+                <tbody id="ingredient_cost_tbody">
+                    <!-- JS will populate this -->
+                </tbody>
+            </table>
+
+            <h4 class="mt-3">Packaging Cost Breakdown</h4>
+            <table class="table table-sm" id="packaging_cost_table">
+                <thead>
+                    <tr>
+                        <th>Item</th>
+                        <th>Units/Batch</th>
+                        <th>Cost/Unit (IDR)</th>
+                        <th>Cost (IDR)</th>
+                    </tr>
+                </thead>
+                <tbody id="packaging_cost_tbody">
+                    <!-- JS will populate this -->
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+
+{# Hidden recipe ID for JavaScript #}
+<div id="recipe-data" data-recipe-id="{{ recipe.id }}"></div>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const recipeIdElement = document.getElementById('recipe-data');
+    if (!recipeIdElement) {
+        console.error("Recipe ID data element not found.");
+        document.getElementById('cost_error_message').textContent = 'Error: Recipe ID not found on page.';
+        document.getElementById('cost_error_message').style.display = 'block';
+        return;
+    }
+    const recipeId = recipeIdElement.dataset.recipeId;
+
+    if (!recipeId) {
+        console.error("Recipe ID is missing from data attribute.");
+        document.getElementById('cost_error_message').textContent = 'Error: Recipe ID is missing.';
+        document.getElementById('cost_error_message').style.display = 'block';
+        return;
+    }
+
+    // DOM Elements for cost display
+    const totalIngredientCostEl = document.getElementById('total_ingredient_cost');
+    const totalPackagingCostEl = document.getElementById('total_packaging_cost');
+    const totalProductionCostEl = document.getElementById('total_production_cost');
+    const costPerServingEl = document.getElementById('cost_per_serving');
+    const ingredientCostTbody = document.getElementById('ingredient_cost_tbody');
+    const packagingCostTbody = document.getElementById('packaging_cost_tbody');
+    const costErrorMessageEl = document.getElementById('cost_error_message');
+
+    fetch(`/api/v1/recipes/${recipeId}/cost-details`)
+        .then(response => {
+            if (!response.ok) {
+                return response.json().then(err => { throw new Error(err.detail || `HTTP error! status: ${response.status}`) });
+            }
+            return response.json();
+        })
+        .then(data => {
+            costErrorMessageEl.style.display = 'none'; // Hide error message on success
+
+            totalIngredientCostEl.textContent = data.total_ingredient_cost.toLocaleString('id-ID', { style: 'currency', currency: 'IDR' });
+            totalPackagingCostEl.textContent = data.total_packaging_cost.toLocaleString('id-ID', { style: 'currency', currency: 'IDR' });
+            totalProductionCostEl.textContent = data.total_production_cost.toLocaleString('id-ID', { style: 'currency', currency: 'IDR' });
+            costPerServingEl.textContent = data.cost_per_serving.toLocaleString('id-ID', { style: 'currency', currency: 'IDR' });
+            // Servings per batch is already in template, but could update if dynamic:
+            // document.getElementById('servings_per_batch_cost_summary').textContent = data.servings_per_batch;
+
+
+            // Populate Ingredient Cost Breakdown
+            ingredientCostTbody.innerHTML = ''; // Clear previous rows
+            if (data.ingredient_cost_breakdown.length > 0) {
+                data.ingredient_cost_breakdown.forEach(item => {
+                    const row = ingredientCostTbody.insertRow();
+                    row.insertCell().textContent = item.ingredient_name;
+                    row.insertCell().textContent = item.quantity_used_in_recipe;
+                    row.insertCell().textContent = item.unit_used_in_recipe;
+                    row.insertCell().textContent = item.cost_for_recipe.toLocaleString('id-ID', { style: 'currency', currency: 'IDR', minimumFractionDigits: 0 });
+                    const warningCell = row.insertCell();
+                    warningCell.textContent = item.warning || '';
+                    if (item.warning) {
+                        warningCell.classList.add('text-danger', 'fw-bold');
+                    }
+                });
+            } else {
+                ingredientCostTbody.innerHTML = '<tr><td colspan="5" class="text-center">No ingredient costs calculated.</td></tr>';
+            }
+
+            // Populate Packaging Cost Breakdown
+            packagingCostTbody.innerHTML = ''; // Clear previous rows
+            if (data.packaging_cost_breakdown.length > 0) {
+                data.packaging_cost_breakdown.forEach(item => {
+                    const row = packagingCostTbody.insertRow();
+                    row.insertCell().textContent = item.item_name;
+                    row.insertCell().textContent = item.units_per_recipe_batch;
+                    row.insertCell().textContent = item.cost_per_unit.toLocaleString('id-ID', { style: 'currency', currency: 'IDR', minimumFractionDigits: 0 });
+                    row.insertCell().textContent = item.cost_for_recipe.toLocaleString('id-ID', { style: 'currency', currency: 'IDR', minimumFractionDigits: 0 });
+                });
+            } else {
+                packagingCostTbody.innerHTML = '<tr><td colspan="4" class="text-center">No packaging costs for this recipe.</td></tr>';
+            }
+
+        })
+        .catch(error => {
+            console.error('Error fetching cost details:', error);
+            costErrorMessageEl.textContent = `Error loading cost details: ${error.message}`;
+            costErrorMessageEl.style.display = 'block';
+            totalIngredientCostEl.textContent = 'Error';
+            totalPackagingCostEl.textContent = 'Error';
+            totalProductionCostEl.textContent = 'Error';
+            costPerServingEl.textContent = 'Error';
+        });
+});
+</script>
+{% endblock %}

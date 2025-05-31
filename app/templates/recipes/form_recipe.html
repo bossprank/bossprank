@@ -1,0 +1,90 @@
+{% extends "base.html" %}
+
+{% block title %}{{ form_title }}{% endblock %}
+
+{% block content %}
+<div class="container mt-4">
+    <h2>{{ form_title }}</h2>
+    <form action="{{ form_action_url }}" method="post" id="recipeForm">
+        {# Basic Recipe Fields #}
+        <div class="mb-3">
+            <label for="name" class="form-label">Recipe Name</label>
+            <input type="text" class="form-control" id="name" name="name" value="{{ recipe.name if recipe else '' }}" required>
+        </div>
+        <div class="mb-3">
+            <label for="description" class="form-label">Description</label>
+            <textarea class="form-control" id="description" name="description" rows="3">{{ recipe.description if recipe and recipe.description else '' }}</textarea>
+        </div>
+        <div class="mb-3">
+            <label for="servings_per_batch" class="form-label">Servings per Batch</label>
+            <input type="number" step="any" class="form-control" id="servings_per_batch" name="servings_per_batch" value="{{ recipe.servings_per_batch if recipe and recipe.servings_per_batch is not none else 1.0 }}" required min="0.01">
+        </div>
+
+        {# Instruction Fields (Textareas) #}
+        {% set instruction_fields = [
+            ("preparation_instructions", "Preparation Instructions", recipe.preparation_instructions if recipe else None),
+            ("mixing_instructions", "Mixing Instructions", recipe.mixing_instructions if recipe else None),
+            ("proofing_instructions", "Proofing Instructions", recipe.proofing_instructions if recipe else None),
+            ("baking_instructions", "Baking Instructions", recipe.baking_instructions if recipe else None),
+            ("resting_instructions", "Resting Instructions", recipe.resting_instructions if recipe else None),
+            ("packaging_instructions", "Packaging Instructions", recipe.packaging_instructions if recipe else None)
+        ] %}
+
+        {% for name, label, value in instruction_fields %}
+        <div class="mb-3">
+            <label for="{{ name }}" class="form-label">{{ label }}</label>
+            <textarea class="form-control" id="{{ name }}" name="{{ name }}" rows="3">{{ value if value else '' }}</textarea>
+        </div>
+        {% endfor %}
+
+        {# Dynamic Ingredients Section #}
+        <hr>
+        <h4>Ingredients</h4>
+        <div id="ingredients-container">
+            {# Ingredient rows will be added here by JavaScript #}
+            {# If editing, pre-populate existing ingredients (handled by JS) #}
+        </div>
+        <button type="button" id="add-ingredient-btn" class="btn btn-info mt-2 mb-3">Add Ingredient</button>
+        <hr>
+
+        {# Submit and Cancel Buttons #}
+        <button type="submit" class="btn btn-success">{{ submit_button_text }}</button>
+        <a href="{{ url_for('view_list_recipes') }}" class="btn btn-secondary">Cancel</a>
+    </form>
+</div>
+
+{# Hidden template for new ingredient rows (used by JavaScript) #}
+<template id="ingredient-row-template">
+    <div class="ingredient-row row align-items-center mb-2 p-2 border rounded">
+        <div class="col-md-4 mb-2 mb-md-0">
+            <label class="form-label small">Ingredient</label>
+            <select name="ingredient_id" class="form-select ingredient-select" required>
+                {# Options populated by JS #}
+            </select>
+        </div>
+        <div class="col-md-3 mb-2 mb-md-0">
+            <label class="form-label small">Quantity</label>
+            <input type="number" step="any" name="quantity" class="form-control ingredient-quantity" placeholder="Quantity" required min="0">
+        </div>
+        <div class="col-md-3 mb-2 mb-md-0">
+            <label class="form-label small">Unit</label>
+            <input type="text" name="unit" class="form-control ingredient-unit" placeholder="Unit (g, ml, pcs)" required>
+        </div>
+        <div class="col-md-2 d-flex align-items-end">
+            <button type="button" class="btn btn-danger btn-sm remove-ingredient-btn w-100">Remove</button>
+        </div>
+    </div>
+</template>
+
+{# Data for JavaScript: all available ingredients and current recipe ingredients (if editing) #}
+<script id="all-ingredients-data" type="application/json">
+    {{ all_ingredients | tojson | safe if all_ingredients else '[]' }}
+</script>
+<script id="current-recipe-ingredients-data" type="application/json">
+    {{ recipe.ingredients | tojson | safe if recipe and recipe.ingredients else '[]' }}
+</script>
+
+{# Link to the JavaScript file #}
+<script src="{{ url_for('static', path='js/recipe_form.js') }}"></script>
+
+{% endblock %}
