@@ -1,0 +1,48 @@
+{% extends "base.html" %}
+
+{% block title %}{{ form_title }}{% endblock %}
+
+{% block content %}
+<div class="container mt-4">
+    <h2>{{ form_title }}</h2>
+    <form action="{{ form_action_url }}" method="post" id="packagingCostForm">
+        <div class="mb-3">
+            <label for="item_name" class="form-label">Item Name</label>
+            <input type="text" class="form-control" id="item_name" name="item_name" value="{{ cost_item.item_name if cost_item else '' }}" required>
+        </div>
+        <div class="mb-3">
+            <label for="cost_per_unit" class="form-label">Cost per Unit (IDR)</label>
+            <input type="number" step="any" class="form-control" id="cost_per_unit" name="cost_per_unit" value="{{ cost_item.cost_per_unit if cost_item and cost_item.cost_per_unit is not none else '' }}" required min="0">
+        </div>
+
+        <hr>
+        <h5>Recipe Association (Optional)</h5>
+
+        <div class="mb-3">
+            <label for="recipe_id" class="form-label">Associated Recipe</label>
+            <select class="form-select" id="recipe_id" name="recipe_id">
+                <option value="">None (General Packaging Cost)</option>
+                {% for recipe in all_recipes %}
+                <option value="{{ recipe.id }}" {% if cost_item and cost_item.recipe_id == recipe.id %}selected{% endif %}>
+                    {{ recipe.name }}
+                </option>
+                {% endfor %}
+            </select>
+        </div>
+
+        <div class="mb-3" id="units_per_batch_container">
+            <label for="units_per_recipe_batch" class="form-label">Units per Recipe Batch</label>
+            <input type="number" step="any" class="form-control" id="units_per_recipe_batch" name="units_per_recipe_batch" value="{{ cost_item.units_per_recipe_batch if cost_item and cost_item.units_per_recipe_batch is not none else '' }}" min="0">
+            <small class="form-text text-muted">Required if a recipe is selected. How many units of this packaging item are used for one batch of the selected recipe?</small>
+        </div>
+
+        <hr>
+        <button type="submit" class="btn btn-success">{{ submit_button_text }}</button>
+        <a href="{{ url_for('view_list_packaging_costs') }}" class="btn btn-secondary">Cancel</a>
+    </form>
+</div>
+
+{# Link to the JavaScript file for dynamic behavior if complex logic is needed #}
+{# For simple show/hide, could be inline or a very small dedicated script #}
+<script src="{{ url_for('static', path='js/packaging_cost_form.js') }}"></script>
+{% endblock %}

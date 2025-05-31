@@ -1,0 +1,29 @@
+{% extends "base.html" %}
+
+{% block title %}{{ form_title }}{% endblock %}
+
+{% block content %}
+<div class="container mt-4">
+    <h2>{{ form_title }}</h2>
+    <form action="{{ form_action_url }}" method="post">
+        <div class="mb-3">
+            <label for="name" class="form-label">Name</label>
+            <input type="text" class="form-control" id="name" name="name" value="{{ ingredient.name if ingredient else '' }}" required>
+        </div>
+        <div class="mb-3">
+            <label for="purchase_quantity" class="form-label">Purchase Quantity</label>
+            <input type="number" step="any" class="form-control" id="purchase_quantity" name="purchase_quantity" value="{{ ingredient.purchase_quantity if ingredient and ingredient.purchase_quantity is not none else '' }}" required>
+        </div>
+        <div class="mb-3">
+            <label for="purchase_unit" class="form-label">Purchase Unit (e.g., g, ml, pcs)</label>
+            <input type="text" class="form-control" id="purchase_unit" name="purchase_unit" value="{{ ingredient.purchase_unit if ingredient else '' }}" required>
+        </div>
+        <div class="mb-3">
+            <label for="purchase_price" class="form-label">Purchase Price (for the quantity above, in IDR)</label>
+            <input type="number" step="any" class="form-control" id="purchase_price" name="purchase_price" value="{{ ingredient.purchase_price if ingredient and ingredient.purchase_price is not none else '' }}" required>
+        </div>
+        <button type="submit" class="btn btn-success">{{ submit_button_text }}</button>
+        <a href="{{ url_for('view_list_ingredients') }}" class="btn btn-secondary">Cancel</a>
+    </form>
+</div>
+{% endblock %}
